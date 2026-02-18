@@ -32,7 +32,7 @@ PING_HOURS = (8, 11, 14, 17, 20, 23)
 PING_MINUTE = 50
 
 DB_PATH = "attendance.db"
-LOCAL_TZ = ZoneInfo("Europe/Tallinn")
+LOCAL_TZ = ZoneInfo("Europe/Moscow")
 # =============================================
 
 
@@ -290,3 +290,4 @@ if not TOKEN:
     raise RuntimeError("Переменная окружения TOKEN не задана. Добавь её в Railway (Variables) или в систему.")
 
 bot.run(TOKEN)
+
