@@ -1,4 +1,5 @@
 import os
+import random
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -7,7 +8,8 @@ import discord
 from discord.ext import commands, tasks
 
 # ================= НАСТРОЙКИ =================
-TOKEN = os.getenv("TOKEN")  # Railway/хостинг: Variables -> TOKEN
+# Токен хранится в переменной окружения TOKEN (Railway -> Variables)
+TOKEN = os.getenv("TOKEN")
 
 # Канал, где работают команды и кнопка отметки
 TEXT_CHANNEL_ID = 1473388888528654422
@@ -24,15 +26,45 @@ PING_CHANNEL_ID = 1473729059514224784
 # Роль, которую упоминать в напоминаниях
 PING_ROLE_ID = 1468614100358795284
 
-# Текст напоминания
-PING_MESSAGE = "босс через 10 минут епта!"
+# Часовой пояс (МСК)
+LOCAL_TZ = ZoneInfo("Europe/Moscow")
 
-# Расписание напоминаний (Europe/Tallinn): 08:50, 11:50, 14:50, 17:50, 20:50, 23:50
-PING_HOURS = (8, 11, 14, 17, 20, 23)
+# Напоминания: ровно в :50 в эти часы, текст выбирается случайно из списка
 PING_MINUTE = 50
+PING_SCHEDULE = {
+    8: [
+        "проснулся? пиздуй на босса через 10 минут.",
+        "норм спалось? а мне нет. пиздуй на босса через 10 минут.",
+        "очнулся? отлично, доброго утра не будет, ведь босс через 10 минут.",
+    ],
+    11: [
+        "альтушки газ знакомиться на боссе через 10 минут.",
+        "групповая мастурбация на боссе через 10 минут.",
+        "аааа прогуливаешь сынок))), кабанчиком на босса через 10 минут.",
+    ],
+    14: [
+        "пришел со школы? на босса нахуй через 10 минут.",
+        "свага тут? нет, она на боссе через 10 минут.",
+        "опозорился в школе? не опозорься при мне на боссе через 10 минут.",
+    ],
+    17: [
+        "кружок коллективного превозмогания - босс через 10 минут.",
+        "стрельба спермой на боссе через 10 минут, открываем рты.",
+        "на циве ебальничек слетает только так, еби на боссе карлик, четко попадая в такт (через 10 минут босс).",
+    ],
+    20: [
+        "Я ПРОЕБЫВАЮ КВ НА КАЛЕ РАДИ ЭТОГО БОССА ЕБАННОГО ЧЕРЕЗ 10 МИНУТ.",
+        "мамбо (босс через 10 минут).",
+        "скёртим на конях, скёртим на конях, враги едут на хуях (босс через 10 минут).",
+    ],
+    23: [
+        "не спать солдат, на босса через 10 минут.",
+        "хватит считать овец, у меня на них хуй стоит (босс через 10 минут).",
+        "ГОСПОДИ ДАЙ МНЕ СИЛ ЕЩЁ ОДИН ДЕНЬ ПРОЖИТЬ С ЭТИМИ БОССАМИ ЕБАННЫМИ (он кстати через 10 минут).",
+    ],
+}
 
 DB_PATH = "attendance.db"
-LOCAL_TZ = ZoneInfo("Europe/Moscow")
 # =============================================
 
 
@@ -80,7 +112,8 @@ def has_role(member: discord.Member, role_id: int) -> bool:
 
 
 def display_name(member: discord.Member) -> str:
-    return member.display_name  # ник на сервере / display name
+    # Ник на сервере / display name
+    return member.display_name
 
 
 # ----------------- UI: КНОПКА -----------------
@@ -263,7 +296,7 @@ async def report(ctx: commands.Context, days: int = 7):
         await ctx.send(current)
 
 
-# ----------------- Авто-пинг роли -----------------
+# ----------------- Авто-пинг роли (случайный текст из списка) -----------------
 @tasks.loop(minutes=1)
 async def ping_role_scheduler():
     now = datetime.now(LOCAL_TZ)
@@ -271,14 +304,15 @@ async def ping_role_scheduler():
     if now.minute != PING_MINUTE:
         return
 
-    if now.hour not in PING_HOURS:
+    if now.hour not in PING_SCHEDULE:
         return
 
     channel = bot.get_channel(PING_CHANNEL_ID)
     if channel is None:
         return
 
-    await channel.send(f"<@&{PING_ROLE_ID}> {PING_MESSAGE}")
+    message_text = random.choice(PING_SCHEDULE[now.hour])
+    await channel.send(f"<@&{PING_ROLE_ID}> {message_text}")
 
 
 @ping_role_scheduler.before_loop
@@ -287,7 +321,7 @@ async def before_ping_role_scheduler():
 
 
 if not TOKEN:
-    raise RuntimeError("Переменная окружения TOKEN не задана. Добавь её в Railway (Variables) или в систему.")
+    raise RuntimeError("Переменная окружения TOKEN не задана. Добавь её в Railway (Variables).")
 
 bot.run(TOKEN)
 
