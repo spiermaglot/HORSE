@@ -22,7 +22,7 @@ ALLOWED_ROLE_ID = 1468613036901138514
 PING_CHANNEL_ID = 1473729059514224784
 
 # Роль, которую упоминать в напоминаниях
-PING_ROLE_ID = 1468613036901138514
+PING_ROLE_ID = 1468614100358795284
 
 # Текст напоминания
 PING_MESSAGE = "босс через 10 минут епта!"
@@ -290,4 +290,5 @@ if not TOKEN:
     raise RuntimeError("Переменная окружения TOKEN не задана. Добавь её в Railway (Variables) или в систему.")
 
 bot.run(TOKEN)
+
 
