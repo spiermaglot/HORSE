@@ -17,7 +17,7 @@ TEXT_CHANNEL_ID = 1473388888528654422
 # Голосовой канал, где "присутствующие" = кто сейчас там сидит
 VOICE_CHANNEL_ID = 1468615527894224998
 
-# Роль, которая может нажимать кнопку и использовать !say
+# Роль, которая может нажимать кнопку и использовать !setup / !report / !say
 ALLOWED_ROLE_ID = 1468613036901138514
 
 # Канал для напоминаний (ОТДЕЛЬНЫЙ от канала с кнопкой/командами)
@@ -55,7 +55,7 @@ PING_SCHEDULE = {
     20: [
         "Я ПРОЕБЫВАЮ КВ НА КАЛЕ РАДИ ЭТОГО БОССА ЕБАННОГО ЧЕРЕЗ 10 МИНУТ.",
         "мамбо (босс через 10 минут).",
-        "скёртим на конях, скёртим на конях, враги едут на хуях (босс через 10 минут).",
+        "кёртим на конях, скёртим на конях, враги едут на хуях (босс через 10 минут).",
     ],
     23: [
         "не спать солдат, на босса через 10 минут.",
@@ -114,6 +114,10 @@ def has_role(member: discord.Member, role_id: int) -> bool:
 def display_name(member: discord.Member) -> str:
     # Ник на сервере / display name
     return member.display_name
+
+
+def in_main_channel(ctx: commands.Context) -> bool:
+    return ctx.channel and ctx.channel.id == TEXT_CHANNEL_ID
 
 
 # ----------------- UI: КНОПКА -----------------
@@ -201,8 +205,8 @@ async def on_ready():
 # ----------------- Команда: setup -----------------
 @bot.command(name="setup")
 async def setup(ctx: commands.Context):
-    if ctx.channel.id != TEXT_CHANNEL_ID:
-        return await ctx.send("Команда работает только в нужном канале.")
+    if not in_main_channel(ctx):
+        return await ctx.send("Команда работает только в основном канале.")
 
     await ctx.send(
         "Нажмите кнопку для отметки присутствующих (бот отметит всех, кто сейчас в войсе):",
@@ -210,29 +214,11 @@ async def setup(ctx: commands.Context):
     )
 
 
-# ----------------- Команда: say -----------------
-@bot.command(name="say")
-async def say(ctx: commands.Context, *, message: str):
-    if ctx.channel.id != TEXT_CHANNEL_ID:
-        return await ctx.send("Команда работает только в нужном канале.")
-
-    if not isinstance(ctx.author, discord.Member) or not has_role(ctx.author, ALLOWED_ROLE_ID):
-        return await ctx.send("У тебя нет нужной роли.")
-
-    # Чтобы удалять команду, дай боту Manage Messages. Если нет — просто не удалит.
-    try:
-        await ctx.message.delete()
-    except discord.Forbidden:
-        pass
-
-    await ctx.send(message)
-
-
 # ----------------- Команда: report (по дням) -----------------
 @bot.command(name="report")
 async def report(ctx: commands.Context, days: int = 7):
-    if ctx.channel.id != TEXT_CHANNEL_ID:
-        return await ctx.send("Команда работает только в нужном канале.")
+    if not in_main_channel(ctx):
+        return await ctx.send("Команда работает только в основном канале.")
 
     if days < 1 or days > 60:
         return await ctx.send("Укажи days от 1 до 60 (чтобы отчёт не был слишком длинным).")
@@ -296,6 +282,34 @@ async def report(ctx: commands.Context, days: int = 7):
         await ctx.send(current)
 
 
+# ----------------- Команда: say (#канал текст) -----------------
+@bot.command(name="say")
+async def say(ctx: commands.Context, channel: discord.TextChannel, *, message: str):
+    # Команда работает только в основном канале
+    if not in_main_channel(ctx):
+        return await ctx.send("Эту команду можно использовать только в основном канале.")
+
+    # Проверка роли
+    if not isinstance(ctx.author, discord.Member) or not has_role(ctx.author, ALLOWED_ROLE_ID):
+        return await ctx.send("У тебя нет нужной роли.")
+
+    # Проверка прав бота в целевом канале
+    me = ctx.guild.me if ctx.guild else None
+    if me is None:
+        return await ctx.send("Ошибка: не удалось определить права бота.")
+
+    if not channel.permissions_for(me).send_messages:
+        return await ctx.send("У меня нет прав писать в этот канал.")
+
+    # Удаляем сообщение с командой (если есть права)
+    try:
+        await ctx.message.delete()
+    except discord.Forbidden:
+        pass
+
+    await channel.send(message)
+
+
 # ----------------- Авто-пинг роли (случайный текст из списка) -----------------
 @tasks.loop(minutes=1)
 async def ping_role_scheduler():
@@ -324,5 +338,3 @@ if not TOKEN:
     raise RuntimeError("Переменная окружения TOKEN не задана. Добавь её в Railway (Variables).")
 
 bot.run(TOKEN)
-
-
